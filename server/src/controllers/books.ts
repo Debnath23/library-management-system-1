@@ -83,14 +83,32 @@ class BookController {
     }
 
     public async searchBooks(query: string): Promise<Book[]> {
-        const books = await collections?.books?.find(
+        // const books = await collections?.books?.find(
+        //     {
+        //         $or: [
+        //             {title: {$regex: new RegExp(query, 'i')}},
+        //             {'authors.name': {$regex: new RegExp(query, 'i')}},
+        //         ]
+        //     }).limit(25).toArray();
+
+        const aggregationPipeline = [
             {
-                $or: [
-                    {title: {$regex: new RegExp(query, 'i')}},
-                    {'authors.name': {$regex: new RegExp(query, 'i')}},
-                ]
-            }).limit(25).toArray();
-        return books;
+                $search: {
+                    index: 'default',
+                    text: {
+                        query,
+                        path: ['title', 'authors.name', 'genres'],
+                        fuzzy: {
+                            maxEdits: 2
+                        }
+                    }
+                }
+            }
+        ];
+
+        const books = await collections?.books?.aggregate(aggregationPipeline).toArray();
+
+        return books as Book[];
     }
 
     public async createBook(book: Book): Promise<InsertOneResult> {
